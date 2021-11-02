@@ -1,0 +1,52 @@
+initialize() {
+
+ genes = readFile("/home/fli21/cassava-mutation-bias/gene.csv");
+ gene_starts = NULL;
+ gene_stops =  NULL;
+
+for (line in genes)
+ {
+ components = strsplit(line, ",");
+ gene_starts = c(gene_starts, asInteger(components[0]));
+ gene_stops = c(gene_stops, asInteger(components[1]));
+ }
+
+ intergenes = readFile("/home/fli21/cassava-mutation-bias/intergene.csv");
+ inter_starts = NULL;
+ inter_stops =  NULL;
+
+for (line in intergenes)
+ {
+ components = strsplit(line, ",");
+ inter_starts = c(inter_starts, asInteger(components[0]));
+ inter_stops = c(inter_stops, asInteger(components[1]));
+ }
+
+ defineConstant("L", max(gene_stops)+1);
+
+
+ initializeSLiMOptions(nucleotideBased=T);
+ initializeAncestralNucleotides(randomNucleotides(L));
+        initializeMutationTypeNuc("m1", 0.5, "f", 0);         // non-coding neutral
+        initializeMutationTypeNuc("m2", 0.1, "g", -0.1, 1);  // gene deleterious
+        initializeMutationTypeNuc("m3", 0.1, "g", -0.1, 1);  // intergene deleterious
+        initializeMutationTypeNuc("m4", 0.8, "g", 0.05, 1);  // beneficial
+
+        initializeGenomicElementType("g1", c(m1, m2, m4), c(1-gds,gds, 0), mmJukesCantor(1e-6*dm)); //gene 
+        initializeGenomicElementType("g2", c(m1, m3, m4), c(1-ids,ids, 0), mmJukesCantor(1e-6));   //intergene 
+
+initializeGenomicElement(g1, gene_starts, gene_stops);
+
+initializeGenomicElement(g2, inter_starts, inter_stops);
+
+ initializeRecombinationRate(1e-4);
+}
+
+1 late() {
+sim.addSubpop("p1", 1000);
+p1.setSelfingRate(sf);
+}
+
+1000 late() {
+ g = p1.sampleIndividuals(1000).genomes;
+ g.outputVCF(filePath=paste('/home/fli21/cassava-mutation-bias/vcf/cassava_dm',dm,'_gds',gds,'_ids',ids,'_sf',sf,'_i',i, '.vcf', sep=""), simplifyNucleotides=T);}
